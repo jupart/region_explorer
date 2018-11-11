@@ -1,0 +1,16 @@
+[package]
+name = "region-explorer"
+version = "0.1.0"
+authors = ["jupart <justinwpartain1@gmail.com"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+[dependencies]
+gfx = "0.17"
+gfx_window_glutin = "0.26"
+glutin = "0.18"
+image = {version = "0.20", default-features = false, features = ["gif_codec", "jpeg", "ico", "png_codec", "pnm", "tga", "tiff", "webp", "bmp", "dxt", ] }
+
+imgui = {git = "https://github.com/Gekkio/imgui-rs"}
+imgui-gfx-renderer = {git = "https://github.com/Gekkio/imgui-rs"}
+imgui-glutin-support = {git = "https://github.com/Gekkio/imgui-rs"}
