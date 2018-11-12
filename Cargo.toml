@@ -14,3 +14,6 @@ image = {version = "0.20", default-features = false, features = ["gif_codec", "j
 imgui = {git = "https://github.com/Gekkio/imgui-rs"}
 imgui-gfx-renderer = {git = "https://github.com/Gekkio/imgui-rs"}
 imgui-glutin-support = {git = "https://github.com/Gekkio/imgui-rs"}
+
+[profile.dev]
+opt-level = 2
