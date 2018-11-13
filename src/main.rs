@@ -186,11 +186,9 @@ fn main() {
 
         let frame_size = imgui_glutin_support::get_frame_size(&window, hidpi_factor).unwrap();
 
-        let mut string = ImString::with_capacity(DESCRIPTION_CAPACITY);
-        string.push_str("Test poop");
         let ui = imgui.frame(frame_size, delta_s);
         region_window.do_ui(&ui);
-        ui.show_demo_window(&mut true);
+        // ui.show_demo_window(&mut true);
 
         encoder.clear(&main_color, CLEAR_COLOR);
         renderer.render(ui, &mut factory, &mut encoder).expect("Rendering failed");
