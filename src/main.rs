@@ -24,6 +24,7 @@ struct RegionWindow {
     image_size: (f32, f32),
     description: Option<String>,
     last_mouse_pos: Option<(f32, f32)>,
+    to_drag: (f32, f32),
     update_description: bool,
 }
 
@@ -36,12 +37,27 @@ impl RegionWindow {
             image_size: (image_size.0 as f32, image_size.1 as f32),
             description: None,
             last_mouse_pos: None,
+            to_drag: (0.0, 0.0),
             update_description: false,
         }
     }
 
     /// If returns false, this window is done, remove it from window list
     pub fn do_ui(&mut self, ui: &Ui) -> bool {
+        let current_mouse_pos = ui.imgui().mouse_pos();
+        if ui.imgui().is_mouse_clicked(ImMouseButton::Right) {
+            println!("Right clicked!");
+        }
+        if ui.imgui().is_mouse_dragging(ImMouseButton::Middle) {
+            println!("Yo we draggin'");
+            if self.last_mouse_pos.is_some() {
+                let first = self.last_mouse_pos.unwrap().0 - current_mouse_pos.0;
+                let second = self.last_mouse_pos.unwrap().1 - current_mouse_pos.1;
+                self.to_drag = (first, second);
+            }
+        }
+        self.last_mouse_pos = Some(current_mouse_pos);
+
         let mut desc = ImString::with_capacity(DESCRIPTION_CAPACITY);
         let desciption_string = match &self.description {
             Some(string) => string,
@@ -55,16 +71,31 @@ impl RegionWindow {
             .scrollable(false)
             .size((800.0, 600.0), ImGuiCond::Once)
             .build(|| {
-                ui.child_frame(im_str!("Map"), (500.0, 560.0))
-                    .always_show_vertical_scroll_bar(true)
-                    .scrollbar_horizontal(true)
+                // Headers
+                ui.text(self.name.as_str());
+                ui.same_line(520.0);
+                ui.text("Description");
+                ui.same_line(760.0);
+
+                // Save description
+                let save = ui.small_button(im_str!("Save"));
+                if save {
+                    println!("Save it baby");
+                }
+
+                // Map
+                ui.child_frame(im_str!("Map"), (500.0, 540.0))
+                    .always_show_vertical_scroll_bar(false)
+                    .scrollbar_horizontal(false)
                     .build(|| {
                         ui.image(self.image, ImVec2::new(self.image_size.0 * 1.0, self.image_size.1 * 1.0)).build();
                     });
                 ui.same_line(520.0);
-                ui.child_frame(im_str!("Description"), (270.0, 580.0))
+
+                // Description
+                ui.child_frame(im_str!("Description"), (270.0, 540.0))
                     .build(|| {
-                        let changed = ui.input_text_multiline(im_str!("Input"), &mut desc, ImVec2::new(270.0, 560.0)).build();
+                        let changed = ui.input_text_multiline(im_str!("Input"), &mut desc, ImVec2::new(270.0, 540.0)).build();
                         if changed {
                         }
                     });
