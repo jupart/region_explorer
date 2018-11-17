@@ -1,0 +1,9 @@
+(
+    name: "Kellua Saari",
+    image: "kellua saari.png",
+    description: "Setting where we do da stuff",
+    points: {
+        (100, 100): "Black Hills Forest1\n Place in the northwest corner of Kellua Saari",
+        (200, 100): "Weston\n Town in western Kellua Saari",
+    },
+)

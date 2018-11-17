@@ -6,8 +6,13 @@ extern crate imgui;
 extern crate imgui_gfx_renderer;
 extern crate imgui_glutin_support;
 extern crate image;
+extern crate ron;
+#[macro_use]
+extern crate serde;
 
+use std::fs::File;
 use std::collections::HashMap;
+use std::io::prelude::*;
 use imgui::*;
 use imgui_gfx_renderer::{Renderer, Shaders};
 use std::time::Instant;
@@ -17,53 +22,46 @@ use glutin::{GlContext};
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 const DESCRIPTION_CAPACITY: usize = 5000;
 
+#[derive(Serialize, Deserialize)]
+struct RegionData {
+    name: String,
+    image: String,
+    description: String,
+    points: HashMap<(u32, u32), String>,
+}
+
 struct RegionWindow {
     name: String,
-    zoom: f32,
+    description: String,
     image: ImTexture,
     image_size: (f32, f32),
-    description: Option<String>,
-    last_mouse_pos: Option<(f32, f32)>,
-    to_drag: (f32, f32),
-    update_description: bool,
+    points: HashMap<(u32, u32), String>,
+    // image_pos: (f32, f32),
+    // update_description: bool,
+    // zoom: f32,
+    // last_mouse_pos: Option<(f32, f32)>,
+    // to_drag: (f32, f32),
 }
 
 impl RegionWindow {
-    pub fn new(name: String, image: ImTexture, image_size: (u32, u32)) -> Self {
-        Self {
-            name,
-            zoom: 1.0,
-            image,
-            image_size: (image_size.0 as f32, image_size.1 as f32),
-            description: None,
-            last_mouse_pos: None,
-            to_drag: (0.0, 0.0),
-            update_description: false,
-        }
-    }
-
     /// If returns false, this window is done, remove it from window list
     pub fn do_ui(&mut self, ui: &Ui) -> bool {
-        let current_mouse_pos = ui.imgui().mouse_pos();
-        if ui.imgui().is_mouse_clicked(ImMouseButton::Right) {
-            println!("Right clicked!");
-        }
-        if ui.imgui().is_mouse_dragging(ImMouseButton::Middle) {
-            println!("Yo we draggin'");
-            if self.last_mouse_pos.is_some() {
-                let first = self.last_mouse_pos.unwrap().0 - current_mouse_pos.0;
-                let second = self.last_mouse_pos.unwrap().1 - current_mouse_pos.1;
-                self.to_drag = (first, second);
-            }
-        }
-        self.last_mouse_pos = Some(current_mouse_pos);
+        // let current_mouse_pos = ui.imgui().mouse_pos();
+        // if ui.imgui().is_mouse_clicked(ImMouseButton::Right) {
+        //     println!("Right clicked!");
+        // }
+        // if ui.imgui().is_mouse_dragging(ImMouseButton::Middle) {
+        //     println!("Yo we draggin'");
+        //     if self.last_mouse_pos.is_some() {
+        //         let first = self.last_mouse_pos.unwrap().0 - current_mouse_pos.0;
+        //         let second = self.last_mouse_pos.unwrap().1 - current_mouse_pos.1;
+        //         self.to_drag = (first, second);
+        //     }
+        // }
+        // self.last_mouse_pos = Some(current_mouse_pos);
 
         let mut desc = ImString::with_capacity(DESCRIPTION_CAPACITY);
-        let desciption_string = match &self.description {
-            Some(string) => string,
-            None => "",
-        };
-        desc.push_str(desciption_string);
+        desc.push_str(self.description.as_str());
 
         ui.window(im_str!("Kellua Saari"))
             .scroll_bar(false)
@@ -75,7 +73,7 @@ impl RegionWindow {
                 ui.text(self.name.as_str());
                 ui.same_line(520.0);
                 ui.text("Description");
-                ui.same_line(760.0);
+                ui.same_line(750.0);
 
                 // Save description
                 let save = ui.small_button(im_str!("Save"));
@@ -166,13 +164,18 @@ fn main() {
     let mut renderer = Renderer::init(&mut imgui, &mut factory, shaders, main_color.clone())
         .expect("Failed to initialize renderer");
 
-    let (tex, sampler, size) = load_texture(&mut factory, &include_bytes!("../resources/kellua saari.png")[..]).unwrap();
+    let region_data = get_region_data("./resources/kellua_saari.ron".to_owned());
+
+    let (tex, sampler, size) = load_texture(&mut factory, &region_data.image).unwrap();
     let image = renderer.textures().insert((tex, sampler));
 
-    let mut sizes = HashMap::new();
-    sizes.insert("kellua", size);
-
-    let mut region_window = RegionWindow::new("Kellua".to_owned(), image, size);
+    let mut region_window = RegionWindow {
+        name: region_data.name,
+        description: region_data.description,
+        image: image,
+        image_size: (size.0 as f32, size.1 as f32),
+        points: region_data.points,
+    };
 
     imgui_glutin_support::configure_keys(&mut imgui);
 
@@ -229,15 +232,24 @@ fn main() {
     }
 }
 
-fn load_texture<R, F>(factory: &mut F, data: &[u8]) -> Result<(gfx::handle::ShaderResourceView<R, [f32; 4]>, gfx::handle::Sampler<R>, (u32, u32)), String>
+fn load_texture<R, F>(factory: &mut F, image_path: &String) -> Result<(gfx::handle::ShaderResourceView<R, [f32; 4]>, gfx::handle::Sampler<R>, (u32, u32)), String>
     where R: gfx::Resources, F: gfx::Factory<R>
 {
-    use std::io::Cursor;
     use gfx::texture as t;
-    let img = image::load(Cursor::new(data), image::PNG).unwrap().to_rgba();
+    let mut resource_path = String::from("./resources/");
+    resource_path.push_str(image_path);
+
+    let img = image::open(resource_path).unwrap().to_rgba();
     let (width, height) = img.dimensions();
     let kind = t::Kind::D2(width as t::Size, height as t::Size, t::AaMode::Single);
     let (_, view) = factory.create_texture_immutable_u8::<gfx::format::Srgba8>(kind, t::Mipmap::Provided, &[&img]).unwrap();
     let sampler = factory.create_sampler(t::SamplerInfo::new(t::FilterMethod::Scale, t::WrapMode::Tile));
     Ok((view, sampler, (width, height)))
+}
+
+fn get_region_data(path: String) -> RegionData {
+    let mut region_file = File::open(path).unwrap();
+    let mut ron_data = String::new();
+    region_file.read_to_string(&mut ron_data).unwrap();
+    ron::de::from_bytes(ron_data.as_bytes()).unwrap()
 }
