@@ -2,8 +2,8 @@
     name: "Kellua Saari",
     image: "kellua saari.png",
     description: "Setting where we do da stuff",
-    points: {
-        (100, 100): "Black Hills Forest1\n Place in the northwest corner of Kellua Saari",
-        (200, 100): "Weston\n Town in western Kellua Saari",
-    },
+    points: [
+        MapPoint(x: 100.0, y: 100.0, description: "Black Hills Forest1\n Place in the northwest corner of Kellua Saari"),
+        MapPoint(x: 200.0, y: 100.0, description: "Weston\n Town in western Kellua Saari"),
+    ],
 )

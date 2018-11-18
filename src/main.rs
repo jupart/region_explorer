@@ -11,7 +11,6 @@ extern crate ron;
 extern crate serde;
 
 use std::fs::File;
-use std::collections::HashMap;
 use std::io::prelude::*;
 use imgui::*;
 use imgui_gfx_renderer::{Renderer, Shaders};
@@ -21,13 +20,33 @@ use glutin::{GlContext};
 
 const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 const DESCRIPTION_CAPACITY: usize = 5000;
+const WINDOW_WIDTH: f32 = 800.0;
+const WINDOW_HEIGHT: f32 = 600.0;
+const IMAGE_FRAME_WIDTH: f32 = 500.0;
+const IMAGE_FRAME_HEIGHT: f32 = 540.0;
+const TEXT_FRAME_WIDTH: f32 = 270.0;
+const TEXT_FRAME_HEIGHT: f32 = 540.0;
+const BUTTON_OFFSET: f32 = 2.0;
+
+#[derive(Serialize, Deserialize)]
+struct MapPoint {
+    x: f32,
+    y: f32,
+    description: String,
+}
+
+impl MapPoint {
+    pub fn new(x: f32, y: f32, description: String) -> Self {
+        Self { x, y, description, }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 struct RegionData {
     name: String,
     image: String,
     description: String,
-    points: HashMap<(u32, u32), String>,
+    points: Vec<MapPoint>,
 }
 
 struct RegionWindow {
@@ -35,45 +54,80 @@ struct RegionWindow {
     description: String,
     image: ImTexture,
     image_size: (f32, f32),
-    points: HashMap<(u32, u32), String>,
-    // image_pos: (f32, f32),
-    // update_description: bool,
-    // zoom: f32,
-    // last_mouse_pos: Option<(f32, f32)>,
-    // to_drag: (f32, f32),
+    image_pos: (f32, f32),
+    points: Vec<MapPoint>,
+    selected_point: i32,
+    zoom: f32,
 }
 
 impl RegionWindow {
-    /// If returns false, this window is done, remove it from window list
-    pub fn do_ui(&mut self, ui: &Ui) -> bool {
-        // let current_mouse_pos = ui.imgui().mouse_pos();
-        // if ui.imgui().is_mouse_clicked(ImMouseButton::Right) {
-        //     println!("Right clicked!");
-        // }
-        // if ui.imgui().is_mouse_dragging(ImMouseButton::Middle) {
-        //     println!("Yo we draggin'");
-        //     if self.last_mouse_pos.is_some() {
-        //         let first = self.last_mouse_pos.unwrap().0 - current_mouse_pos.0;
-        //         let second = self.last_mouse_pos.unwrap().1 - current_mouse_pos.1;
-        //         self.to_drag = (first, second);
+    fn mouse_in_region(&self, ui: &Ui) -> bool {
+        let current_mouse_pos = ui.imgui().mouse_pos();
+        (current_mouse_pos.0 < IMAGE_FRAME_WIDTH)
+            && (current_mouse_pos.0 > 10.0)
+            && (current_mouse_pos.1 > 40.0)
+            && (current_mouse_pos.1 < IMAGE_FRAME_HEIGHT + 40.0)
+    }
+
+    fn mouse_in_frame_coords(&self, ui: &Ui) -> (f32, f32) {
+        let current_mouse_pos = ui.imgui().mouse_pos();
+        (current_mouse_pos.0 - 17.0, current_mouse_pos.1 - 54.0)
+    }
+
+    pub fn do_ui(&mut self, ui: &Ui) {
+        // TODO - zoom is working, but there are issues
+        //      1. I'd like to zoom to mouse pos on scroll
+        //      2. Radio buttons are not drawn in the right position at all zoom levels
+        //
+        // let scroll = ui.imgui().mouse_wheel();
+        // if scroll != 0.0 {
+        //     if self.mouse_in_region(&ui) {
+        //         if scroll > 0.0 {
+        //             self.zoom += 0.1;
+        //         } else {
+        //             self.zoom -= 0.1;
+        //         }
+
+        //         if self.zoom > 1.0 {
+        //             self.zoom = 1.0;
+        //         }
+        //         if self.zoom < 0.1 {
+        //             self.zoom = 0.1;
+        //         }
+        //         self.image_pos = ((-self.image_size.0 * self.zoom + IMAGE_FRAME_WIDTH) / 2.0, (-self.image_size.1 * self.zoom + IMAGE_FRAME_HEIGHT) / 2.0);
         //     }
         // }
-        // self.last_mouse_pos = Some(current_mouse_pos);
+        if ui.imgui().is_mouse_clicked(ImMouseButton::Right) {
+            if self.mouse_in_region(&ui) {
+                let frame_click = self.mouse_in_frame_coords(&ui);
+                let point_x = frame_click.0 - self.image_pos.0;
+                let scaled_point_x = point_x / self.zoom;
+                let point_y = frame_click.1 - self.image_pos.1;
+                let scaled_point_y = point_y / self.zoom;
+                self.points.push(MapPoint::new(scaled_point_x, scaled_point_y, "New shit".to_owned()));
+            }
+        }
+        if ui.imgui().is_mouse_dragging(ImMouseButton::Middle) {
+            let delta = ui.imgui().mouse_delta();
+            self.image_pos.0 += delta.0;
+            self.image_pos.1 += delta.1;
+        }
 
         let mut desc = ImString::with_capacity(DESCRIPTION_CAPACITY);
         desc.push_str(self.description.as_str());
 
         ui.window(im_str!("Kellua Saari"))
+            .position((0.0, 0.0), ImGuiCond::Once)
             .scroll_bar(false)
             .resizable(false)
             .scrollable(false)
-            .size((800.0, 600.0), ImGuiCond::Once)
+            .size((WINDOW_WIDTH, WINDOW_HEIGHT), ImGuiCond::Once)
             .build(|| {
                 // Headers
                 ui.text(self.name.as_str());
-                ui.same_line(520.0);
+                ui.same_line(IMAGE_FRAME_WIDTH + 20.0);
                 ui.text("Description");
-                ui.same_line(750.0);
+                ui.same_line(IMAGE_FRAME_WIDTH + 250.0);
 
                 // Save description
                 let save = ui.small_button(im_str!("Save"));
@@ -82,23 +136,41 @@ impl RegionWindow {
                 }
 
                 // Map
-                ui.child_frame(im_str!("Map"), (500.0, 540.0))
-                    .always_show_vertical_scroll_bar(false)
+                ui.child_frame(im_str!("Map"), (IMAGE_FRAME_WIDTH, IMAGE_FRAME_HEIGHT))
+                    .movable(false)
+                    .show_scrollbar_with_mouse(false)
+                    .show_scrollbar(false)
                     .scrollbar_horizontal(false)
                     .build(|| {
-                        ui.image(self.image, ImVec2::new(self.image_size.0 * 1.0, self.image_size.1 * 1.0)).build();
+                        ui.set_cursor_pos(self.image_pos);
+                        ui.image(self.image, ImVec2::new(self.image_size.0 * self.zoom, self.image_size.1 * self.zoom)).build();
+
+                        let mut i = 0;
+                        for point in &self.points {
+                            let draw_point = (
+                                self.image_pos.0 + (point.x - BUTTON_OFFSET) * self.zoom,
+                                self.image_pos.1 + (point.y - BUTTON_OFFSET) * self.zoom
+                            );
+                            ui.set_cursor_pos(draw_point);
+                            ui.push_id(i);
+                            if ui.radio_button(im_str!(""), &mut self.selected_point, i) {
+                                self.description = point.description.clone();
+                            }
+                            ui.pop_id();
+                            i += 1;
+                        }
                     });
-                ui.same_line(520.0);
+                ui.same_line(IMAGE_FRAME_WIDTH + 20.0);
 
                 // Description
-                ui.child_frame(im_str!("Description"), (270.0, 540.0))
+                ui.child_frame(im_str!("Description"), (TEXT_FRAME_WIDTH, TEXT_FRAME_HEIGHT))
+                    .scrollbar_horizontal(true)
                     .build(|| {
-                        let changed = ui.input_text_multiline(im_str!("Input"), &mut desc, ImVec2::new(270.0, 540.0)).build();
+                        let changed = ui.input_text_multiline(im_str!("Input"), &mut desc, ImVec2::new(TEXT_FRAME_WIDTH, TEXT_FRAME_HEIGHT)).build();
                         if changed {
                         }
                     });
             });
-        true
     }
 }
 
@@ -107,7 +179,7 @@ fn main() {
     let context = glutin::ContextBuilder::new().with_vsync(true);
     let window = glutin::WindowBuilder::new()
         .with_title("Region Explorer")
-        .with_dimensions(glutin::dpi::LogicalSize::new(1024f64, 768f64));
+        .with_dimensions(glutin::dpi::LogicalSize::new(WINDOW_WIDTH as f64, WINDOW_HEIGHT as f64));
     let (window, mut device, mut factory, mut main_color, mut main_depth) =
         gfx_window_glutin::init::<gfx::format::Rgba8, gfx::format::DepthStencil>(window, context, &events_loop);
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
@@ -164,7 +236,7 @@ fn main() {
     let mut renderer = Renderer::init(&mut imgui, &mut factory, shaders, main_color.clone())
         .expect("Failed to initialize renderer");
 
-    let region_data = get_region_data("./resources/kellua_saari.ron".to_owned());
+    let region_data = get_region_data("kellua_saari.ron");
 
     let (tex, sampler, size) = load_texture(&mut factory, &region_data.image).unwrap();
     let image = renderer.textures().insert((tex, sampler));
@@ -174,7 +246,10 @@ fn main() {
         description: region_data.description,
         image: image,
         image_size: (size.0 as f32, size.1 as f32),
+        image_pos: (0.0, 0.0),
         points: region_data.points,
+        selected_point: -1,
+        zoom: 0.6,
     };
 
     imgui_glutin_support::configure_keys(&mut imgui);
@@ -247,8 +322,10 @@ fn load_texture<R, F>(factory: &mut F, image_path: &String) -> Result<(gfx::hand
     Ok((view, sampler, (width, height)))
 }
 
-fn get_region_data(path: String) -> RegionData {
-    let mut region_file = File::open(path).unwrap();
+fn get_region_data(path: &str) -> RegionData {
+    let mut resource_path = String::from("./resources/");
+    resource_path.push_str(path);
+    let mut region_file = File::open(resource_path).unwrap();
     let mut ron_data = String::new();
     region_file.read_to_string(&mut ron_data).unwrap();
     ron::de::from_bytes(ron_data.as_bytes()).unwrap()
