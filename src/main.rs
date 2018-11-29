@@ -1,12 +1,12 @@
 extern crate gfx;
 extern crate gfx_window_glutin;
 extern crate glutin;
-// #[macro_use]
 extern crate imgui;
 extern crate imgui_gfx_renderer;
 extern crate imgui_glutin_support;
 extern crate image;
 extern crate ron;
+
 #[macro_use]
 extern crate serde;
 
@@ -82,9 +82,7 @@ fn main() {
 
     imgui.set_font_global_scale((1.0 / hidpi_factor) as f32);
 
-    let mut renderer = Renderer::init(&mut imgui, &mut factory, shaders, main_color.clone())
-        .expect("Failed to initialize renderer");
-
+    let mut renderer = Renderer::init(&mut imgui, &mut factory, shaders, main_color.clone()).unwrap();
     let region_data = get_region_data("kellua_saari.ron");
     let (tex, sampler, size) = load_texture(&mut factory, &region_data.image).unwrap();
     let image = renderer.textures().insert((tex, sampler));

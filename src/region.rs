@@ -74,13 +74,11 @@ impl RegionWindow {
     }
 
     fn create_backup(&self) {
-        println!("Created backup");
         std::fs::copy("./resources/kellua_saari.ron", "./resources/kellua_saari.backup").unwrap();
     }
 
     fn write_file(&self) {
         self.create_backup();
-        println!("Write dat file bebe");
 
         let region = RegionData {
             name: self.name.clone(),
@@ -136,7 +134,7 @@ impl RegionWindow {
         let mut desc = ImString::with_capacity(DESCRIPTION_CAPACITY);
         desc.push_str(self.current_description.as_str());
 
-        ui.window(im_str!("Kellua Saari"))
+        ui.window(im_str!(""))
             .position((0.0, 0.0), ImGuiCond::Once)
             .scroll_bar(false)
             .resizable(false)

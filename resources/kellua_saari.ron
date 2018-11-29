@@ -1,17 +1,72 @@
 (
     name: "Kellua Saari",
     image: "kellua saari.png",
-    description: "Setting where we do da stuff\n\nadded bits and jibs.",
+    description: "Welcome to Region Explorer!\n\nClick on one of the buttons on the\nmap to pull up its description.\n\nScroll around by draggin while\nholding down the middle mouse button.\n\nRight click on the map to place a new\nlocation.",
     points: [
         (
-            x: 100,
-            y: 100,
-            description: "Black Hills Forest1\n Place in the northwest corner of Kellua Saari",
+            x: 1013.90875,
+            y: 766.01746,
+            description: "Dimlake\n\nYou feel the cool air before you see\nthe edge of the lake. A heavy mist\nrises above what would be the surface\nof the lake. Instead of water, there\'s\nonly fog as far down as you can see.\n\n * Down the edge of the lake hangs\n   long boughs of moss, dripping with\n   dew\n * A small walkway, about 5\' wide,\n   descends into the fog",
         ),
         (
-            x: 200,
-            y: 100,
-            description: "Weston\nTown in western Kellua Saari\n\nAdded bits and jibs\n\nagain mane",
+            x: 1172.2219,
+            y: 874.0462,
+            description: "Romyn\'s Cabin\n\n",
+        ),
+        (
+            x: 1061.6954,
+            y: 1108.8544,
+            description: "Weston\n\n",
+        ),
+        (
+            x: 1510.6667,
+            y: 537.403,
+            description: "Bandit Camp - SE Black Hills Forest\n\n",
+        ),
+        (
+            x: 1428.6156,
+            y: 368.5396,
+            description: "Boab\'s Hut\n\n",
+        ),
+        (
+            x: 1505.7443,
+            y: 239.35068,
+            description: "Dopp\'s Cabin\n\n",
+        ),
+        (
+            x: 1433.9355,
+            y: 546.9473,
+            description: "Appler\'s Farm\n\n",
+        ),
+        (
+            x: 1832.1532,
+            y: 475.00253,
+            description: "Norton\n\n",
+        ),
+        (
+            x: 1637.2521,
+            y: 914.1843,
+            description: "Pale Mountain",
+        ),
+        (
+            x: 1959.7871,
+            y: 1053.4711,
+            description: "The Abyss",
+        ),
+        (
+            x: 2604.0486,
+            y: 1182.8584,
+            description: "Lake Karibi",
+        ),
+        (
+            x: 1659.909,
+            y: 1498.3605,
+            description: "Thorn\'s Hometown",
+        ),
+        (
+            x: 1394.7571,
+            y: 1809.6815,
+            description: "Gravedigger\'s Abode",
         ),
     ],
 )
