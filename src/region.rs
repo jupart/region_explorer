@@ -44,6 +44,22 @@ pub struct RegionWindow {
 }
 
 impl RegionWindow {
+    pub fn new(name: String, desc: String, img: ImTexture, img_name: String, img_size: (u32, u32), points: Vec<MapPoint>) -> Self {
+        Self {
+            name,
+            region_description: desc.clone(),
+            current_description: desc,
+            image: img,
+            image_name: img_name,
+            image_size: (img_size.0 as f32, img_size.1 as f32),
+            image_pos: (0.0, 0.0),
+            points,
+            selected_point: -1,
+            zoom: 0.6,
+            readonly: false,
+        }
+    }
+
     fn mouse_in_region(&self, ui: &Ui) -> bool {
         let current_mouse_pos = ui.imgui().mouse_pos();
         (current_mouse_pos.0 < IMAGE_FRAME_WIDTH)

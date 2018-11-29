@@ -88,19 +88,14 @@ fn main() {
     let region_data = get_region_data("kellua_saari.ron");
     let (tex, sampler, size) = load_texture(&mut factory, &region_data.image).unwrap();
     let image = renderer.textures().insert((tex, sampler));
-    let mut region_window = RegionWindow {
-        name: region_data.name,
-        region_description: region_data.description.clone(),
-        current_description: region_data.description,
-        image: image,
-        image_name: region_data.image,
-        image_size: (size.0 as f32, size.1 as f32),
-        image_pos: (0.0, 0.0),
-        points: region_data.points,
-        selected_point: -1,
-        zoom: 0.6,
-        readonly: false,
-    };
+    let mut region_window = RegionWindow::new(
+        region_data.name,
+        region_data.description,
+        image,
+        region_data.image,
+        size,
+        region_data.points,
+    );
 
     imgui_glutin_support::configure_keys(&mut imgui);
 
