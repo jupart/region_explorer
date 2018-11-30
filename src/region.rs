@@ -1,4 +1,5 @@
 use imgui::*;
+use glutin::VirtualKeyCode;
 
 pub const WINDOW_WIDTH: f32 = 800.0;
 pub const WINDOW_HEIGHT: f32 = 600.0;
@@ -41,6 +42,7 @@ pub struct RegionWindow {
     pub selected_point: i32,
     pub zoom: f32,
     pub readonly: bool,
+    pub to_delete: bool,
 }
 
 impl RegionWindow {
@@ -57,6 +59,7 @@ impl RegionWindow {
             selected_point: -1,
             zoom: 0.6,
             readonly: false,
+            to_delete: false,
         }
     }
 
@@ -92,7 +95,26 @@ impl RegionWindow {
         std::fs::write("./resources/kellua_saari.ron", ron_string).unwrap();
     }
 
-    pub fn do_ui(&mut self, ui: &Ui) {
+    fn remove_point(&mut self, point_to_delete: Option<i32>) {
+        if point_to_delete.is_none() {
+            return;
+        }
+        let point = point_to_delete.unwrap();
+
+        if point == self.selected_point {
+            self.selected_point = -1;
+            self.current_description = self.region_description.clone();
+        } else if point < self.selected_point {
+            self.selected_point -= 1;
+        }
+        self.points.remove(point as usize);
+    }
+
+    fn handle_input(&mut self, ui: &Ui) {
+        if ui.imgui().is_key_pressed(VirtualKeyCode::Escape as usize) {
+            self.to_delete = false;
+        }
+
         // TODO - zoom is working, but there are issues
         //      1. I'd like to zoom to mouse pos on scroll
         //      2. Radio buttons are not drawn in the right position at all zoom levels
@@ -130,6 +152,10 @@ impl RegionWindow {
             self.image_pos.0 += delta.0;
             self.image_pos.1 += delta.1;
         }
+    }
+
+    pub fn do_ui(&mut self, ui: &Ui) {
+        self.handle_input(ui);
 
         let mut desc = ImString::with_capacity(DESCRIPTION_CAPACITY);
         desc.push_str(self.current_description.as_str());
@@ -143,11 +169,24 @@ impl RegionWindow {
             .build(|| {
                 // Headers
                 ui.text(self.name.as_str());
+                ui.same_line(IMAGE_FRAME_WIDTH - 100.0);
+
+                // For deleting points
+                ui.checkbox(im_str!("Delete mode"), &mut self.to_delete);
                 ui.same_line(IMAGE_FRAME_WIDTH + 20.0);
 
                 // Is readonly?
                 ui.checkbox(im_str!("Read-only"), &mut self.readonly);
                 ui.same_line(IMAGE_FRAME_WIDTH + 244.0);
+
+                if self.to_delete {
+                    ui.imgui().set_mouse_cursor(ImGuiMouseCursor::Hand);
+                } else {
+                    ui.imgui().set_mouse_cursor(ImGuiMouseCursor::Arrow);
+                }
+                if self.readonly {
+                    self.to_delete = false;
+                }
 
                 // Write changed descriptions and new points to file
                 if ui.button(im_str!("Write"), ImVec2::new(45.0, 18.0)) && !self.readonly {
@@ -155,6 +194,7 @@ impl RegionWindow {
                 }
 
                 // Map
+                let mut point_to_delete: Option<i32> = None;
                 ui.child_frame(im_str!("Map"), (IMAGE_FRAME_WIDTH, IMAGE_FRAME_HEIGHT))
                     .movable(false)
                     .show_scrollbar_with_mouse(false)
@@ -172,13 +212,22 @@ impl RegionWindow {
                             );
                             ui.set_cursor_pos(draw_point);
                             ui.push_id(i);
+
+                            let point_before_select = self.selected_point;
                             if ui.radio_button(im_str!(""), &mut self.selected_point, i) {
-                                self.current_description = point.description.clone();
+                                if !self.to_delete {
+                                    self.current_description = point.description.clone();
+                                } else {
+                                    self.selected_point = point_before_select;
+                                    point_to_delete = Some(i);
+                                }
                             }
                             ui.pop_id();
                             i += 1;
                         }
                     });
+
+                self.remove_point(point_to_delete);
                 ui.same_line(IMAGE_FRAME_WIDTH + 20.0);
 
                 // Description
