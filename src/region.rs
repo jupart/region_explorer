@@ -101,6 +101,7 @@ impl RegionWindow {
         }
         let point = point_to_delete.unwrap();
 
+        // Shift self.selected_point as needed, depending on position of point
         if point == self.selected_point {
             self.selected_point = -1;
             self.current_description = self.region_description.clone();
@@ -169,15 +170,14 @@ impl RegionWindow {
             .build(|| {
                 // Headers
                 ui.text(self.name.as_str());
-                ui.same_line(IMAGE_FRAME_WIDTH - 100.0);
 
                 // For deleting points
+                ui.same_line(IMAGE_FRAME_WIDTH - 100.0);
                 ui.checkbox(im_str!("Delete mode"), &mut self.to_delete);
-                ui.same_line(IMAGE_FRAME_WIDTH + 20.0);
 
                 // Is readonly?
+                ui.same_line(IMAGE_FRAME_WIDTH + 20.0);
                 ui.checkbox(im_str!("Read-only"), &mut self.readonly);
-                ui.same_line(IMAGE_FRAME_WIDTH + 244.0);
 
                 if self.to_delete {
                     ui.imgui().set_mouse_cursor(ImGuiMouseCursor::Hand);
@@ -189,6 +189,7 @@ impl RegionWindow {
                 }
 
                 // Write changed descriptions and new points to file
+                ui.same_line(IMAGE_FRAME_WIDTH + 244.0);
                 if ui.button(im_str!("Write"), ImVec2::new(45.0, 18.0)) && !self.readonly {
                     self.write_file();
                 }
@@ -228,9 +229,9 @@ impl RegionWindow {
                     });
 
                 self.remove_point(point_to_delete);
-                ui.same_line(IMAGE_FRAME_WIDTH + 20.0);
 
                 // Description
+                ui.same_line(IMAGE_FRAME_WIDTH + 20.0);
                 ui.child_frame(im_str!("Description"), (TEXT_FRAME_WIDTH, TEXT_FRAME_HEIGHT))
                     .scrollbar_horizontal(true)
                     .build(|| {
