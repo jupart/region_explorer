@@ -9,6 +9,7 @@ edition = "2018"
 
 [dependencies]
 gtk = { version = "^0", features = ["v3_12"] }
+gdk = "^0"
 gio = "^0"
 glib = "^0"
 cairo-rs = { version = "^0", features = ["png"] }
