@@ -1,7 +1,7 @@
 (
     name: "Kellua Saari",
     image: "kellua saari.png",
-    description: "Welcome to Region Explorer!\n\nClick on one of the buttons on the\nmap to pull up its description.\n\nScroll around by draggin while\nholding down the middle mouse button.\n\nRight click on the map to place a new\nlocation.",
+    description: "Welcome to Region Explorer!\n\nClick on one of the buttons on the\nmap to pull up its description.\n\nScroll around by dragging while\nholding down the middle mouse button.\n\nRight click on the map to place a new\nlocation.\n\nIf \"Read-only\" is checked, any edits\nthat are made to descriptions will\nnot be kept and no new locations may\nbe placed on the map. The \"Write\"\nbutton also does not work.\n\nIf \"Delete mode\" is checked and a\nlocation is clicked, the location will\nbe deleted.\n\nIf \"Write\" is clicked, the current\nstate of the map will be saved to\na file.",
     points: [
         (
             x: 1013.90875,
