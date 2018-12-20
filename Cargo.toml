@@ -8,16 +8,9 @@ license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
-gfx = "0.17"
-gfx_window_glutin = "0.26"
-glutin = "0.18"
-image = {version = "0.20", default-features = false, features = ["gif_codec", "jpeg", "ico", "png_codec", "pnm", "tga", "tiff", "webp", "bmp", "dxt", ] }
-ron = "0.4"
-serde = "1"
+gtk = "^0.3.0"
+relm = "^0.11.0"
+relm-derive = "^0.11.0"
 
-imgui = {git = "https://github.com/Gekkio/imgui-rs"}
-imgui-gfx-renderer = {git = "https://github.com/Gekkio/imgui-rs"}
-imgui-glutin-support = {git = "https://github.com/Gekkio/imgui-rs"}
-
-[profile.dev.overrides."*"]
-opt-level = 3
+# [profile.dev.overrides."*"]
+# opt-level = 3
