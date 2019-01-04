@@ -8,11 +8,15 @@ license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
+gdk = "^0"
 gtk = { version = "^0.3.0", features = ["v3_12"] }
 relm = "^0.11.0"
 relm-derive = "^0.11.0"
 ron = "0.4"
 serde = "1"
+
+# [features]
+# default = ["relm/unstable", "relm-attributes/unstable", "relm-derive/unstable"]
 
 # [profile.dev.overrides."*"]
 # opt-level = 3
