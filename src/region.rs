@@ -5,18 +5,21 @@ use std::io::prelude::*;
 
 // const TEXT_BORDER_SIZE: i32 = 3;
 // const TEXT_PADDING_SIZE: i32 = 3;
-// const BUTTON_SIZE: i32 = 20;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MapPoint {
-    pub x: f32,
-    pub y: f32,
+    pub x: f64,
+    pub y: f64,
     pub description: String,
 }
 
 impl MapPoint {
-    pub fn new(x: f32, y: f32) -> Self {
-        Self { x, y, description: String::new() }
+    pub fn new(point: (f64, f64)) -> Self {
+        Self {
+            x: point.0,
+            y: point.1,
+            description: String::new()
+        }
     }
 }
 
