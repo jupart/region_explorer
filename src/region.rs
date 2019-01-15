@@ -1,5 +1,7 @@
 use std::fs::File;
 use std::io::prelude::*;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use gtk::prelude::*;
 
@@ -23,11 +25,18 @@ impl MapPoint {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct RegionData {
+pub struct SerializedRegionData {
     name: String,
     image: String,
     description: String,
     points: Vec<MapPoint>,
+}
+
+pub struct RegionData {
+    name: String,
+    image: String,
+    description: String,
+    points: Rc<RefCell<Vec<MapPoint>>>,
 }
 
 impl RegionData {
@@ -35,7 +44,13 @@ impl RegionData {
         let mut region_file = File::open(path).expect(&format!("Error opening {}", path));
         let mut ron_data = String::new();
         region_file.read_to_string(&mut ron_data).unwrap();
-        ron::de::from_bytes(ron_data.as_bytes()).expect(&format!("{} doesn't match expected RegionData format", path))
+        let region_data: SerializedRegionData = ron::de::from_bytes(ron_data.as_bytes()).expect(&format!("{} doesn't match expected RegionData format", path));
+        Self {
+            name: region_data.name,
+            image: region_data.image,
+            description: region_data.description,
+            points: Rc::new(RefCell::new(region_data.points))
+        }
     }
 
     fn build_menu_box(&self) -> gtk::Box {
@@ -53,10 +68,8 @@ impl RegionData {
     }
 
     fn get_scroll(scrolled_window: &gtk::ScrolledWindow) -> (i32, i32) {
-        let h = scrolled_window.get_hscrollbar().expect("ScrolledWindow doesn't have a horizontal scrollbar");
-        let v = scrolled_window.get_vscrollbar().expect("ScrolledWindow doesn't have a vertical scrollbar");
-        let h_scroll = h.downcast_ref::<gtk::Scrollbar>().unwrap().get_value() as i32;
-        let v_scroll = v.downcast_ref::<gtk::Scrollbar>().unwrap().get_value() as i32;
+        let h_scroll = scrolled_window.get_hadjustment().unwrap().get_value() as i32;
+        let v_scroll = scrolled_window.get_vadjustment().unwrap().get_value() as i32;
         (h_scroll, v_scroll)
     }
 
@@ -84,7 +97,7 @@ impl RegionData {
     fn build_map_overlay(&self) -> gtk::Overlay {
         // The map image and the overlaid buttons
         let overlay = gtk::Overlay::new();
-        let copied_points = self.points.clone();
+        let closure_reference_points = Rc::clone(&self.points);
         overlay.connect_get_child_position(move |parent, child| {
             // Get position of child from self.points
             let mut point_index = None;
@@ -98,11 +111,12 @@ impl RegionData {
                 // We didn't find a point match for some reason
                 return None;
             }
-            let point = copied_points.get(point_index.unwrap()).expect("MapPoint for child doesn't exist");
+            let points = closure_reference_points.borrow();
+            let point = points.get(point_index.unwrap()).expect("MapPoint for child doesn't exist");
 
             // Get scroll info
-            let kid = &parent.get_children()[0];
-            let scrolled_window = kid.downcast_ref::<gtk::ScrolledWindow>().expect("Overlay doesn't have ScrolledWindow as base child");
+            let probably_scrolled_window = &parent.get_child().unwrap();
+            let scrolled_window = probably_scrolled_window.downcast_ref::<gtk::ScrolledWindow>().expect("Overlay doesn't have ScrolledWindow as base child");
             let (h_scroll, v_scroll) = Self::get_scroll(scrolled_window);
 
             Some(gtk::Rectangle {
@@ -116,24 +130,28 @@ impl RegionData {
         let image = gtk::Image::new_from_file("./resources/kellua saari.png");
         map.add(&image);
         map.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
-        map.connect_button_press_event(|map, event| {
+        let closure_reference_points2 = Rc::clone(&self.points);
+        map.connect_button_press_event(move |map, event| {
             let right_click = 3;
             if event.get_button() == right_click {
                 let probably_overlay = map.get_parent().unwrap();
-                let overlay = probably_overlay.downcast_ref::<gtk::Overlay>().unwrap();
-                let probably_scrollbar = overlay.get_child().unwrap();
-                let scrollbar = probably_scrollbar.downcast_ref::<gtk::Scrollbar>().unwrap();
+                let inner_overlay = probably_overlay.downcast_ref::<gtk::Overlay>().unwrap();
+                let probably_scrolled_window = inner_overlay.get_child().unwrap();
+                let scrolled_window = probably_scrolled_window.downcast_ref::<gtk::ScrolledWindow>().expect("Overlay doesn't have ScrolledWindow as base child");
+                let (h_scroll, v_scroll) = Self::get_scroll(scrolled_window);
 
                 let (x, y) = event.get_position();
                 let new_point = MapPoint::new(x as f32, y as f32);
                 println!("Creating new point at {:?}", new_point);
-                // overlay.add_overlay(&self.get_map_marker(&new_point));
+                overlay.add_overlay(&self.get_map_marker(&new_point));
+                closure_reference_points2.borrow_mut().push(new_point)
             }
             Inhibit(false)
         });
         overlay.add(&map);
 
-        for point in &self.points {
+        let points = self.points.borrow();
+        for point in points.iter() {
             let marker = self.get_map_marker(&point);
             overlay.add_overlay(&marker);
         }
