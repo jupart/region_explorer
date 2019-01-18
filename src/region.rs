@@ -7,19 +7,19 @@ use gtk::prelude::*;
 
 const TEXT_BORDER_SIZE: i32 = 3;
 const TEXT_PADDING_SIZE: i32 = 3;
-const BUTTON_SIZE: i32 = 20;
+const BUTTON_SIZE: f64 = 16.0;
 const WINDOW_WIDTH: i32 = 800;
 const WINDOW_HEIGHT: i32 = 600;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct MapPoint {
-    pub x: f32,
-    pub y: f32,
+    pub x: f64,
+    pub y: f64,
     pub description: String,
 }
 
 impl MapPoint {
-    pub fn new(x: f32, y: f32) -> Self {
+    pub fn new(x: f64, y: f64) -> Self {
         Self { x, y, description: String::new() }
     }
 }
@@ -53,27 +53,45 @@ impl RegionData {
         }
     }
 
+    fn save(&self) {
+
+    }
+
     fn build_menu_box(&self) -> gtk::Box {
         // Menu to read and write the RegionData file
         let menu_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
-        let file_chooser = gtk::FileChooserButton::new("Open file", gtk::FileChooserAction::Open);
         let check_button = gtk::CheckButton::new_with_label("Read only");
         let read_button = gtk::Button::new_with_label("Read");
         let write_button = gtk::Button::new_with_label("Write");
-        menu_box.add(&file_chooser);
+        read_button.connect_clicked(|button| {
+            let open_dialog = gtk::FileChooserDialog::with_buttons::<gtk::Window>(
+                Some("Open File"),
+                None,
+                gtk::FileChooserAction::Open,
+                &[("_Cancel", gtk::ResponseType::Cancel), ("_Open", gtk::ResponseType::Accept)]
+            );
+        });
+        write_button.connect_clicked(|button| {
+            let save_as_dialog = gtk::FileChooserDialog::with_buttons::<gtk::Window>(
+                Some("Save File As"),
+                None,
+                gtk::FileChooserAction::Save,
+                &[("_Cancel", gtk::ResponseType::Cancel), ("_Save", gtk::ResponseType::Accept)]
+            );
+        });
         menu_box.pack_end(&read_button, false, true, 0);
         menu_box.pack_end(&check_button, false, true, 0);
         menu_box.pack_end(&write_button, false, true, 0);
         menu_box
     }
 
-    fn get_scroll(scrolled_window: &gtk::ScrolledWindow) -> (i32, i32) {
-        let h_scroll = scrolled_window.get_hadjustment().unwrap().get_value() as i32;
-        let v_scroll = scrolled_window.get_vadjustment().unwrap().get_value() as i32;
+    fn get_scroll(scrolled_window: &gtk::ScrolledWindow) -> (f64, f64) {
+        let h_scroll = scrolled_window.get_hadjustment().unwrap().get_value();
+        let v_scroll = scrolled_window.get_vadjustment().unwrap().get_value();
         (h_scroll, v_scroll)
     }
 
-    fn get_map_marker(&self, point: &MapPoint) -> gtk::Button {
+    fn get_map_marker(point: &MapPoint) -> gtk::Button {
         let marker = gtk::Button::new();
         let popup = gtk::Popover::new(&marker);
         let text_buffer = gtk::TextBuffer::new(None);
@@ -91,13 +109,14 @@ impl RegionData {
         marker.connect_clicked(move |_| {
             popup.show_all();
         });
+        marker.show();
         marker
     }
 
     fn build_map_overlay(&self) -> gtk::Overlay {
         // The map image and the overlaid buttons
         let overlay = gtk::Overlay::new();
-        let closure_reference_points = Rc::clone(&self.points);
+        let points = Rc::clone(&self.points);
         overlay.connect_get_child_position(move |parent, child| {
             // Get position of child from self.points
             let mut point_index = None;
@@ -111,7 +130,7 @@ impl RegionData {
                 // We didn't find a point match for some reason
                 return None;
             }
-            let points = closure_reference_points.borrow();
+            let points = points.borrow();
             let point = points.get(point_index.unwrap()).expect("MapPoint for child doesn't exist");
 
             // Get scroll info
@@ -120,31 +139,30 @@ impl RegionData {
             let (h_scroll, v_scroll) = Self::get_scroll(scrolled_window);
 
             Some(gtk::Rectangle {
-                x: point.x as i32 - h_scroll - BUTTON_SIZE / 2,
-                y: point.y as i32 - v_scroll - BUTTON_SIZE / 2,
-                width: BUTTON_SIZE,
-                height: BUTTON_SIZE
+                x: (point.x - h_scroll - BUTTON_SIZE / 2.0) as i32,
+                y: (point.y - v_scroll - BUTTON_SIZE / 2.0) as i32,
+                width: BUTTON_SIZE as i32,
+                height: BUTTON_SIZE as i32
             })
         });
         let map = gtk::ScrolledWindow::new(None, None);
         let image = gtk::Image::new_from_file("./resources/kellua saari.png");
         map.add(&image);
         map.add_events(gdk::EventMask::BUTTON_PRESS_MASK.bits() as i32);
-        let closure_reference_points2 = Rc::clone(&self.points);
+        let points = Rc::clone(&self.points);
         map.connect_button_press_event(move |map, event| {
             let right_click = 3;
             if event.get_button() == right_click {
                 let probably_overlay = map.get_parent().unwrap();
-                let inner_overlay = probably_overlay.downcast_ref::<gtk::Overlay>().unwrap();
-                let probably_scrolled_window = inner_overlay.get_child().unwrap();
-                let scrolled_window = probably_scrolled_window.downcast_ref::<gtk::ScrolledWindow>().expect("Overlay doesn't have ScrolledWindow as base child");
+                let overlay = probably_overlay.downcast_ref::<gtk::Overlay>().unwrap();
+                let scrolled_window = map.downcast_ref::<gtk::ScrolledWindow>().expect("Overlay doesn't have ScrolledWindow as base child");
                 let (h_scroll, v_scroll) = Self::get_scroll(scrolled_window);
 
                 let (x, y) = event.get_position();
-                let new_point = MapPoint::new(x as f32, y as f32);
+                let new_point = MapPoint::new(x + h_scroll, y + v_scroll);
                 println!("Creating new point at {:?}", new_point);
-                overlay.add_overlay(&self.get_map_marker(&new_point));
-                closure_reference_points2.borrow_mut().push(new_point)
+                points.borrow_mut().push(new_point.clone());
+                overlay.add_overlay(&Self::get_map_marker(&new_point));
             }
             Inhibit(false)
         });
@@ -152,7 +170,7 @@ impl RegionData {
 
         let points = self.points.borrow();
         for point in points.iter() {
-            let marker = self.get_map_marker(&point);
+            let marker = Self::get_map_marker(&point);
             overlay.add_overlay(&marker);
         }
 
