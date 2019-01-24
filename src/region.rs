@@ -24,7 +24,7 @@ impl MapPoint {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SerializedRegionData {
     name: String,
     image: String,
@@ -44,44 +44,38 @@ impl RegionData {
         let mut region_file = File::open(path).expect(&format!("Error opening {}", path));
         let mut ron_data = String::new();
         region_file.read_to_string(&mut ron_data).unwrap();
-        let region_data: SerializedRegionData = ron::de::from_bytes(ron_data.as_bytes()).expect(&format!("{} doesn't match expected RegionData format", path));
+        let region_data: SerializedRegionData = ron::de::from_bytes(ron_data.as_bytes())
+            .expect(&format!("{} doesn't match expected RegionData format", path));
         Self {
             name: region_data.name,
             image: region_data.image,
             description: region_data.description,
-            points: Rc::new(RefCell::new(region_data.points))
+            points: Rc::new(RefCell::new(region_data.points)),
         }
-    }
-
-    fn save(&self) {
-
     }
 
     fn build_menu_box(&self) -> gtk::Box {
         // Menu to read and write the RegionData file
         let menu_box = gtk::Box::new(gtk::Orientation::Horizontal, 5);
-        let check_button = gtk::CheckButton::new_with_label("Read only");
-        let read_button = gtk::Button::new_with_label("Read");
         let write_button = gtk::Button::new_with_label("Write");
-        read_button.connect_clicked(|button| {
-            let open_dialog = gtk::FileChooserDialog::with_buttons::<gtk::Window>(
-                Some("Open File"),
-                None,
-                gtk::FileChooserAction::Open,
-                &[("_Cancel", gtk::ResponseType::Cancel), ("_Open", gtk::ResponseType::Accept)]
-            );
+        let immutable_points = Rc::clone(&self.points);
+        let name_clone = self.name.clone();
+        let image_clone = self.image.clone();
+        let description_clone = self.description.clone();
+        write_button.connect_clicked(move |_button| {
+            let region = SerializedRegionData {
+                name: name_clone.clone(),
+                image: image_clone.clone(),
+                description: description_clone.clone(),
+                points: immutable_points.borrow().clone(),
+            };
+
+            println!("{:?}", region);
+            let pretty = ron::ser::PrettyConfig::default();
+            let ron_string = ron::ser::to_string_pretty(&region, pretty).unwrap();
+            std::fs::write("./resources/kellua_saari.ron", ron_string).unwrap();
         });
-        write_button.connect_clicked(|button| {
-            let save_as_dialog = gtk::FileChooserDialog::with_buttons::<gtk::Window>(
-                Some("Save File As"),
-                None,
-                gtk::FileChooserAction::Save,
-                &[("_Cancel", gtk::ResponseType::Cancel), ("_Save", gtk::ResponseType::Accept)]
-            );
-        });
-        menu_box.pack_end(&read_button, false, true, 0);
-        menu_box.pack_end(&check_button, false, true, 0);
-        menu_box.pack_end(&write_button, false, true, 0);
+        menu_box.add(&write_button);
         menu_box
     }
 
@@ -96,6 +90,9 @@ impl RegionData {
         let popup = gtk::Popover::new(&marker);
         let text_buffer = gtk::TextBuffer::new(None);
         text_buffer.set_text(&point.description);
+        text_buffer.connect_changed(|| {
+
+        });
         let text_view = gtk::TextView::new_with_buffer(&text_buffer);
         text_view.set_wrap_mode(gtk::WrapMode::Word);
         text_view.set_border_window_size(gtk::TextWindowType::Left, TEXT_BORDER_SIZE);
@@ -135,7 +132,8 @@ impl RegionData {
 
             // Get scroll info
             let probably_scrolled_window = &parent.get_child().unwrap();
-            let scrolled_window = probably_scrolled_window.downcast_ref::<gtk::ScrolledWindow>().expect("Overlay doesn't have ScrolledWindow as base child");
+            let scrolled_window = probably_scrolled_window.downcast_ref::<gtk::ScrolledWindow>()
+                .expect("Overlay doesn't have ScrolledWindow as base child");
             let (h_scroll, v_scroll) = Self::get_scroll(scrolled_window);
 
             Some(gtk::Rectangle {
@@ -155,12 +153,12 @@ impl RegionData {
             if event.get_button() == right_click {
                 let probably_overlay = map.get_parent().unwrap();
                 let overlay = probably_overlay.downcast_ref::<gtk::Overlay>().unwrap();
-                let scrolled_window = map.downcast_ref::<gtk::ScrolledWindow>().expect("Overlay doesn't have ScrolledWindow as base child");
+                let scrolled_window = map.downcast_ref::<gtk::ScrolledWindow>()
+                    .expect("Overlay doesn't have ScrolledWindow as base child");
                 let (h_scroll, v_scroll) = Self::get_scroll(scrolled_window);
 
                 let (x, y) = event.get_position();
                 let new_point = MapPoint::new(x + h_scroll, y + v_scroll);
-                println!("Creating new point at {:?}", new_point);
                 points.borrow_mut().push(new_point.clone());
                 overlay.add_overlay(&Self::get_map_marker(&new_point));
             }
@@ -208,17 +206,3 @@ impl RegionData {
 //        std::fs::copy("./resources/kellua_saari.ron", "./resources/kellua_saari.backup").unwrap();
 //    }
 
-//    fn write_file(&self) {
-//        self.create_backup();
-
-//        let region = RegionData {
-//            name: self.name.clone(),
-//            image: self.image_name.clone(),
-//            description: self.region_description.clone(),
-//            points: self.points.clone(),
-//        };
-
-//        let pretty = ron::ser::PrettyConfig::default();
-//        let ron_string = ron::ser::to_string_pretty(&region, pretty).unwrap();
-//        std::fs::write("./resources/kellua_saari.ron", ron_string).unwrap();
-//    }

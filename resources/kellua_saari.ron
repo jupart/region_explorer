@@ -68,5 +68,10 @@
             y: 1809.6815,
             description: "Gravedigger\'s Abode",
         ),
+        (
+            x: 796.9669592822767,
+            y: 885.7231869269341,
+            description: "",
+        ),
     ],
 )
