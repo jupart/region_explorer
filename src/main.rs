@@ -23,6 +23,8 @@ const CLEAR_COLOR: [f32; 4] = [0.2, 0.2, 0.2, 1.0];
 mod region;
 use self::region::{RegionData, RegionWindow, WINDOW_WIDTH, WINDOW_HEIGHT};
 
+const MODAL_CAPACITY: usize = 500;
+
 fn main() {
     let mut events_loop = glutin::EventsLoop::new();
     let context = glutin::ContextBuilder::new().with_vsync(true);
@@ -83,6 +85,13 @@ fn main() {
     imgui.set_font_global_scale((1.0 / hidpi_factor) as f32);
 
     let mut renderer = Renderer::init(&mut imgui, &mut factory, shaders, main_color.clone()).unwrap();
+
+    imgui_glutin_support::configure_keys(&mut imgui);
+
+    let mut last_frame = Instant::now();
+    let mut quit = false;
+
+    let mut region_file_name = String::new();
     let region_data = get_region_data("kellua_saari.ron");
     let (tex, sampler, size) = load_texture(&mut factory, &region_data.image).unwrap();
     let image = renderer.textures().insert((tex, sampler));
@@ -94,12 +103,7 @@ fn main() {
         size,
         region_data.points,
     );
-
-    imgui_glutin_support::configure_keys(&mut imgui);
-
-    let mut last_frame = Instant::now();
-    let mut quit = false;
-
+    let mut desc = ImString::with_capacity(MODAL_CAPACITY);
     loop {
         events_loop.poll_events(|event| {
             use glutin::{
@@ -139,7 +143,32 @@ fn main() {
         let frame_size = imgui_glutin_support::get_frame_size(&window, hidpi_factor).unwrap();
 
         let ui = imgui.frame(frame_size, delta_s);
-        region_window.do_ui(&ui);
+
+        if region_file_name.is_empty() {
+            ui.open_popup(im_str!("Enter a file path"));
+            ui.popup_modal(im_str!("Enter a file path")).build(|| {
+                    ui.input_text(im_str!("Modal Input"), &mut file_name);
+                    if ui.button(im_str!("OK"), (0.0, 0.0)) {
+                        region_file_name = String::from("kellua_saari.ron");
+                        ui.close_current_popup();
+                    }
+            });
+            if !region_file_name.is_empty() {
+                let region_data = get_region_data(&region_file_name);
+                let (tex, sampler, size) = load_texture(&mut factory, &region_data.image).unwrap();
+                let image = renderer.textures().insert((tex, sampler));
+                region_window = RegionWindow::new(
+                    region_data.name,
+                    region_data.description,
+                    image,
+                    region_data.image,
+                    size,
+                    region_data.points,
+                );
+            }
+        } else {
+            region_window.do_ui(&ui);
+        }
         // ui.show_demo_window(&mut true);
 
         encoder.clear(&main_color, CLEAR_COLOR);
